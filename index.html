@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Batalla Castellera de Càlcul Mental 1vs1 - @bmarquil</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        /* Evitar selecció de text i comportaments tàctils no desitjats en pantalles interactives */
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: manipulation;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+
+        .font-game {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        /* Efectes d'animació per als botons del teclat */
+        .keypad-btn {
+            transition: transform 0.08s ease, background-color 0.1s ease;
+        }
+        .keypad-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* Animació d'error (sacsejada) */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* Animació d'encert (pop) */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop {
+            animation: pop 0.3s ease-out;
+        }
+
+        /* Animació d'aparició d'un nou pis del castell */
+        @keyframes castellerBuild {
+            0% { transform: translateY(-25px) scale(0.7); opacity: 0; }
+            70% { transform: translateY(3px) scale(1.05); opacity: 1; }
+            100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .animate-build {
+            animation: castellerBuild 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Animació de l'aleta de l'enxaneta */
+        @keyframes aletaWave {
+            0%, 100% { transform: rotate(-12deg); }
+            50% { transform: rotate(18deg); }
+        }
+        .animate-aleta {
+            transform-origin: bottom center;
+            animation: aletaWave 0.6s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col text-white">
+
+    <!-- ==================== BARRA SUPERIOR DE CONTROL ==================== -->
+    <header class="h-14 sm:h-16 bg-slate-900 border-b border-slate-800 px-4 flex items-center justify-between z-20 shrink-0 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-500 p-2 rounded-xl shadow-inner text-slate-950 font-game font-extrabold text-lg leading-none flex items-center justify-center">
+                🙌
+            </div>
+            <div>
+                <h1 class="font-game text-lg sm:text-xl font-bold tracking-wide text-slate-100 leading-none">DIADA CASTELLERA DEL CÀLCUL</h1>
+                <span class="text-xs text-slate-400 font-medium">Recurs educatiu per @bmarquil</span>
+            </div>
+        </div>
+
+        <!-- Indicador central d'estat / Modes -->
+        <div id="header-status" class="hidden lg:flex items-center gap-4 bg-slate-800/80 px-4 py-1.5 rounded-full border border-slate-700">
+            <span id="badge-ops" class="text-sm font-semibold text-amber-400">Sumes</span>
+            <span class="text-slate-600">•</span>
+            <span id="badge-digits" class="text-sm font-semibold text-emerald-400">1 xifra</span>
+            <span class="text-slate-600">•</span>
+            <span id="badge-goal" class="text-sm font-semibold text-sky-400">Castell de 10 pisos</span>
+        </div>
+
+        <!-- Botons d'acció ràpida (Configuració, So, Pantalla Completa) -->
+        <div class="flex items-center gap-2 sm:gap-3">
+            <button id="btn-sound" onclick="toggleSound()" class="p-2.5 sm:p-3 bg-slate-800 hover:bg-slate-700 active:scale-95 rounded-xl border border-slate-700 transition flex items-center justify-center" title="Activar/Desactivar So">
+                <svg id="icon-sound-on" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <svg id="icon-sound-off" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6 text-rose-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+            </button>
+
+            <button id="btn-open-config" onclick="openConfigModal()" class="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 rounded-xl border border-slate-700 font-semibold text-sm sm:text-base flex items-center gap-2 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Configurar</span>
+            </button>
+
+            <button id="btn-fullscreen" onclick="toggleFullScreen()" class="px-3 sm:px-4 py-2 sm:py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 rounded-xl font-bold text-sm sm:text-base flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition">
+                <svg id="icon-fs-enter" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                <svg id="icon-fs-exit" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                </svg>
+                <span class="hidden sm:inline" id="text-fullscreen">Pantalla Completa</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== ZONA PRINCIPAL DE JOC (PLAÇA CASTELLERA 1VS1) ==================== -->
+    <main class="flex-1 grid grid-cols-12 relative overflow-hidden">
+        
+        <!-- ==================== COLLA 1 (ESQUERRA - CAMISA BLAVA) ==================== -->
+        <section id="zone-p1" class="col-span-4 h-full bg-gradient-to-br from-blue-950 via-slate-900 to-blue-900/40 p-2.5 sm:p-4 flex flex-col justify-between border-r border-blue-800/40">
+            <!-- Capçalera Colla 1 -->
+            <div class="flex items-center justify-between bg-blue-950/90 border border-cyan-500/30 rounded-2xl px-3 py-2 shadow-md">
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[0_0_10px_#22d3ee]"></span>
+                    <span class="font-game text-lg sm:text-xl font-bold text-cyan-300">COLLA BLAVA</span>
+                </div>
+                <div class="flex items-center gap-1.5 bg-blue-900 px-3 py-1 rounded-xl border border-cyan-500/30">
+                    <span class="text-xs uppercase font-bold text-cyan-200">Pisos:</span>
+                    <span id="score-p1" class="font-game text-xl sm:text-2xl font-extrabold text-white">0</span>
+                    <span id="goal-label-p1" class="text-xs text-cyan-300 font-bold">/10</span>
+                </div>
+            </div>
+
+            <!-- Pantalla d'Operació i Resposta C1 -->
+            <div id="card-p1" class="my-2 bg-slate-900/95 border-2 border-cyan-500/40 rounded-3xl p-3 sm:p-4 flex flex-col items-center justify-center shadow-2xl relative flex-1 max-h-44">
+                <div id="op-p1" class="font-game text-3xl sm:text-5xl lg:text-6xl font-bold text-white tracking-wider mb-2">
+                    12 + 8
+                </div>
+                <div class="w-full max-w-[220px] h-12 sm:h-14 bg-slate-950 rounded-2xl border-2 border-cyan-400/50 flex items-center justify-center px-3 shadow-inner">
+                    <span id="input-p1" class="font-game text-2xl sm:text-4xl font-bold text-cyan-300 tracking-widest min-h-[1em]"></span>
+                    <span class="w-0.5 h-7 bg-cyan-400 animate-pulse ml-1"></span>
+                </div>
+                <div id="feedback-p1" class="absolute inset-0 rounded-3xl pointer-events-none flex items-center justify-center opacity-0 transition-opacity duration-200"></div>
+            </div>
+
+            <!-- Teclat Numèric Tàctil C1 -->
+            <div class="grid grid-cols-3 gap-1.5 sm:gap-2.5 h-3/5 max-h-[360px]">
+                <button onclick="pressKey(1, '7')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">7</button>
+                <button onclick="pressKey(1, '8')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">8</button>
+                <button onclick="pressKey(1, '9')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">9</button>
+                
+                <button onclick="pressKey(1, '4')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">4</button>
+                <button onclick="pressKey(1, '5')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">5</button>
+                <button onclick="pressKey(1, '6')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">6</button>
+                
+                <button onclick="pressKey(1, '1')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">1</button>
+                <button onclick="pressKey(1, '2')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">2</button>
+                <button onclick="pressKey(1, '3')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">3</button>
+                
+                <button onclick="clearInput(1)" class="keypad-btn bg-rose-600/90 hover:bg-rose-500 active:bg-rose-700 text-white font-game text-xl sm:text-2xl font-bold rounded-2xl border-b-4 border-rose-900 shadow-lg flex items-center justify-center" title="Esborrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 sm:h-9 sm:w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+                    </svg>
+                </button>
+                <button onclick="pressKey(1, '0')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-cyan-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">0</button>
+                <button onclick="submitAnswer(1)" class="keypad-btn bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-game text-xl sm:text-2xl font-extrabold rounded-2xl border-b-4 border-emerald-800 shadow-lg flex items-center justify-center">
+                    OK
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== PLAÇA CASTELLERA CENTRAL (ELS DOS CASTELLS CREIXENT) ==================== -->
+        <section class="col-span-4 h-full bg-gradient-to-b from-sky-900 via-indigo-950 to-slate-900 relative flex flex-col justify-between overflow-hidden select-none">
+            
+            <!-- Fons decoratiu de cel i balcons de plaça -->
+            <div class="absolute inset-0 pointer-events-none opacity-20">
+                <div class="w-full h-1/3 border-b border-dashed border-sky-300/40 flex items-end justify-center pb-1">
+                    <span class="text-[10px] uppercase tracking-widest text-sky-200 font-bold">Línia d'Aleta (Cim)</span>
+                </div>
+            </div>
+
+            <!-- Cartell superior de la Plaça -->
+            <div class="z-10 pt-2 px-2 text-center">
+                <div class="inline-block bg-slate-950/70 backdrop-blur-sm border border-amber-400/30 px-3 py-1 rounded-full">
+                    <span class="font-game text-xs sm:text-sm font-bold text-amber-300 tracking-wide">🏛️ PLAÇA MAJOR</span>
+                </div>
+            </div>
+
+            <!-- Contenidor dels dos castells (esquerra = Blava, dreta = Vermella) -->
+            <div class="flex-1 grid grid-cols-2 items-end pb-10 px-1 sm:px-3 gap-1 relative z-10">
+                
+                <!-- CASTELL COLLA 1 (BLAVA) -->
+                <div class="h-full flex flex-col justify-end items-center relative">
+                    <!-- Rètol estat castell 1 -->
+                    <div id="status-castell-1" class="mb-2 bg-cyan-950/90 border border-cyan-400/40 px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold text-cyan-200 text-center shadow">
+                        Preparant pinya...
+                    </div>
+                    <!-- Torre dinàmica SVG/HTML -->
+                    <div id="tower-p1" class="w-full flex flex-col-reverse items-center justify-start transition-all duration-300">
+                        <!-- Aquí es generen els pisos dinàmicament -->
+                    </div>
+                </div>
+
+                <!-- Línia divisòria subtil de la plaça -->
+                <div class="absolute top-12 bottom-10 left-1/2 w-px bg-slate-600/40 -translate-x-1/2"></div>
+
+                <!-- CASTELL COLLA 2 (VERMELLA) -->
+                <div class="h-full flex flex-col justify-end items-center relative">
+                    <!-- Rètol estat castell 2 -->
+                    <div id="status-castell-2" class="mb-2 bg-rose-950/90 border border-rose-400/40 px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-bold text-rose-200 text-center shadow">
+                        Preparant pinya...
+                    </div>
+                    <!-- Torre dinàmica SVG/HTML -->
+                    <div id="tower-p2" class="w-full flex flex-col-reverse items-center justify-start transition-all duration-300">
+                        <!-- Aquí es generen els pisos dinàmicament -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Terra empedrat de la plaça -->
+            <div class="h-10 w-full bg-gradient-to-t from-stone-900 via-stone-800 to-stone-700 border-t-2 border-stone-500 flex items-center justify-around px-4 z-10 shrink-0 shadow-inner">
+                <span class="text-xs font-game font-bold text-cyan-300 tracking-wider">COLLA BLAVA</span>
+                <span class="text-xs text-stone-400">•••</span>
+                <span class="text-xs font-game font-bold text-rose-300 tracking-wider">COLLA VERMELLA</span>
+            </div>
+        </section>
+
+        <!-- ==================== COLLA 2 (DRETA - CAMISA VERMELLA) ==================== -->
+        <section id="zone-p2" class="col-span-4 h-full bg-gradient-to-bl from-rose-950 via-slate-900 to-rose-900/40 p-2.5 sm:p-4 flex flex-col justify-between border-l border-rose-800/40">
+            <!-- Capçalera Colla 2 -->
+            <div class="flex items-center justify-between bg-rose-950/90 border border-rose-500/30 rounded-2xl px-3 py-2 shadow-md">
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-rose-500 shadow-[0_0_10px_#f43f5e]"></span>
+                    <span class="font-game text-lg sm:text-xl font-bold text-rose-300">COLLA VERMELLA</span>
+                </div>
+                <div class="flex items-center gap-1.5 bg-rose-900 px-3 py-1 rounded-xl border border-rose-500/30">
+                    <span class="text-xs uppercase font-bold text-rose-200">Pisos:</span>
+                    <span id="score-p2" class="font-game text-xl sm:text-2xl font-extrabold text-white">0</span>
+                    <span id="goal-label-p2" class="text-xs text-rose-300 font-bold">/10</span>
+                </div>
+            </div>
+
+            <!-- Pantalla d'Operació i Resposta C2 -->
+            <div id="card-p2" class="my-2 bg-slate-900/95 border-2 border-rose-500/40 rounded-3xl p-3 sm:p-4 flex flex-col items-center justify-center shadow-2xl relative flex-1 max-h-44">
+                <div id="op-p2" class="font-game text-3xl sm:text-5xl lg:text-6xl font-bold text-white tracking-wider mb-2">
+                    15 - 6
+                </div>
+                <div class="w-full max-w-[220px] h-12 sm:h-14 bg-slate-950 rounded-2xl border-2 border-rose-400/50 flex items-center justify-center px-3 shadow-inner">
+                    <span id="input-p2" class="font-game text-2xl sm:text-4xl font-bold text-rose-300 tracking-widest min-h-[1em]"></span>
+                    <span class="w-0.5 h-7 bg-rose-400 animate-pulse ml-1"></span>
+                </div>
+                <div id="feedback-p2" class="absolute inset-0 rounded-3xl pointer-events-none flex items-center justify-center opacity-0 transition-opacity duration-200"></div>
+            </div>
+
+            <!-- Teclat Numèric Tàctil C2 -->
+            <div class="grid grid-cols-3 gap-1.5 sm:gap-2.5 h-3/5 max-h-[360px]">
+                <button onclick="pressKey(2, '7')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">7</button>
+                <button onclick="pressKey(2, '8')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">8</button>
+                <button onclick="pressKey(2, '9')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">9</button>
+                
+                <button onclick="pressKey(2, '4')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">4</button>
+                <button onclick="pressKey(2, '5')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">5</button>
+                <button onclick="pressKey(2, '6')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">6</button>
+                
+                <button onclick="pressKey(2, '1')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">1</button>
+                <button onclick="pressKey(2, '2')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">2</button>
+                <button onclick="pressKey(2, '3')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">3</button>
+                
+                <button onclick="clearInput(2)" class="keypad-btn bg-rose-600/90 hover:bg-rose-500 active:bg-rose-700 text-white font-game text-xl sm:text-2xl font-bold rounded-2xl border-b-4 border-rose-900 shadow-lg flex items-center justify-center" title="Esborrar">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 sm:h-9 sm:w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z" />
+                    </svg>
+                </button>
+                <button onclick="pressKey(2, '0')" class="keypad-btn bg-slate-800/90 hover:bg-slate-700 active:bg-rose-600 text-white font-game text-2xl sm:text-4xl font-bold rounded-2xl border-b-4 border-slate-950 shadow-lg flex items-center justify-center">0</button>
+                <button onclick="submitAnswer(2)" class="keypad-btn bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-slate-950 font-game text-xl sm:text-2xl font-extrabold rounded-2xl border-b-4 border-emerald-800 shadow-lg flex items-center justify-center">
+                    OK
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- ==================== MODAL DE CONFIGURACIÓ (DOCENT) ==================== -->
+    <div id="config-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-slate-700 rounded-3xl w-full max-w-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-6 max-h-[95vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="font-game text-2xl sm:text-3xl font-bold text-white">Configuració de la Diada Castellera</h2>
+                    <p class="text-slate-400 text-sm">Cada operació encertada fa pujar un pis del castell fins fer l'aleta!</p>
+                </div>
+                <button onclick="toggleFullScreen()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-bold text-indigo-300 border border-slate-700 flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                    Pantalla Completa
+                </button>
+            </div>
+
+            <!-- 1. Tipus d'operacions -->
+            <div>
+                <label class="block text-sm font-bold uppercase tracking-wider text-slate-300 mb-3">1. Quines operacions vols practicar? (Pots marcar-ne diverses)</label>
+                <div class="grid grid-cols-3 gap-3 sm:gap-4">
+                    <button type="button" id="cfg-op-add" onclick="toggleOp('add')" class="op-toggle p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-600/20 text-white font-game text-xl sm:text-2xl font-bold flex flex-col items-center gap-1 transition">
+                        <span class="text-3xl">+</span>
+                        <span>Sumes</span>
+                    </button>
+                    <button type="button" id="cfg-op-sub" onclick="toggleOp('sub')" class="op-toggle p-4 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-game text-xl sm:text-2xl font-bold flex flex-col items-center gap-1 transition">
+                        <span class="text-3xl">−</span>
+                        <span>Restes</span>
+                    </button>
+                    <button type="button" id="cfg-op-mul" onclick="toggleOp('mul')" class="op-toggle p-4 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-game text-xl sm:text-2xl font-bold flex flex-col items-center gap-1 transition">
+                        <span class="text-3xl">×</span>
+                        <span>Multiplicacions</span>
+                    </button>
+                </div>
+                <p id="op-warning" class="text-rose-400 text-xs font-semibold mt-2 hidden">Has de seleccionar com a mínim un tipus d'operació!</p>
+            </div>
+
+            <!-- 2. Nombre de xifres -->
+            <div>
+                <label class="block text-sm font-bold uppercase tracking-wider text-slate-300 mb-3">2. Dificultat (Xifres dels números)</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <button type="button" onclick="selectDigits(1)" id="cfg-dig-1" class="dig-btn p-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-600/20 text-white font-bold text-base sm:text-lg transition">
+                        1 xifra<br><span class="text-xs font-normal text-emerald-300">(ex: 7 + 5)</span>
+                    </button>
+                    <button type="button" onclick="selectDigits(21)" id="cfg-dig-21" class="dig-btn p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-bold text-base sm:text-lg transition">
+                        2 i 1 xifra<br><span class="text-xs font-normal text-slate-400">(ex: 24 + 6)</span>
+                    </button>
+                    <button type="button" onclick="selectDigits(2)" id="cfg-dig-2" class="dig-btn p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-bold text-base sm:text-lg transition">
+                        2 xifres<br><span class="text-xs font-normal text-slate-400">(ex: 35 + 18)</span>
+                    </button>
+                    <button type="button" onclick="selectDigits(3)" id="cfg-dig-3" class="dig-btn p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-bold text-base sm:text-lg transition">
+                        3 xifres<br><span class="text-xs font-normal text-slate-400">(ex: 120 + 45)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 3. Alçada del castell i Auto-validació -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold uppercase tracking-wider text-slate-300 mb-2">3. Alçada del Castell (Operacions per fer l'aleta)</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button type="button" onclick="selectGoal(6)" id="cfg-goal-6" class="goal-btn py-3 rounded-xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-game text-lg font-bold">Castell de 6</button>
+                        <button type="button" onclick="selectGoal(8)" id="cfg-goal-8" class="goal-btn py-3 rounded-xl border-2 border-sky-500 bg-sky-600/20 text-white font-game text-lg font-bold">Castell de 8</button>
+                        <button type="button" onclick="selectGoal(10)" id="cfg-goal-10" class="goal-btn py-3 rounded-xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-game text-lg font-bold">Castell de 10</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold uppercase tracking-wider text-slate-300 mb-2">4. Mode de resposta</label>
+                    <button type="button" id="cfg-auto-submit" onclick="toggleAutoSubmit()" class="w-full py-3 px-4 rounded-xl border-2 border-amber-500 bg-amber-500/20 text-white font-bold text-sm sm:text-base flex items-center justify-between transition">
+                        <span>Validació automàtica (sense prémer OK)</span>
+                        <span id="auto-submit-badge" class="bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-lg text-xs font-extrabold">ACTIVAT</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Botó Començar -->
+            <button onclick="startGame()" class="mt-2 w-full py-4 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 active:scale-[0.99] text-slate-950 font-game text-2xl sm:text-3xl font-extrabold rounded-2xl shadow-xl shadow-amber-500/20 transition flex items-center justify-center gap-3">
+                <span>A PLAÇA! COMENÇAR CASTELL!</span>
+                <span class="text-3xl">🙌</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DE VICTÒRIA (ALETA!) ==================== -->
+    <div id="victory-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border-2 border-amber-400/60 rounded-3xl w-full max-w-xl p-8 text-center shadow-2xl flex flex-col items-center gap-6 animate-pop">
+            <div class="w-24 h-24 bg-amber-400/20 border-2 border-amber-400 rounded-full flex items-center justify-center text-5xl shadow-[0_0_30px_rgba(251,191,36,0.4)]">
+                🙌
+            </div>
+            <div>
+                <div class="inline-block bg-amber-400 text-slate-950 font-game font-extrabold text-sm px-3 py-1 rounded-full mb-2 uppercase tracking-wider">
+                    CASTELL CARREGAT I DESCARREGAT!
+                </div>
+                <h2 id="winner-title" class="font-game text-3xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-500 mb-2">
+                    ALETA DE LA COLLA BLAVA!
+                </h2>
+                <p id="winner-subtitle" class="text-slate-300 text-lg font-medium">
+                    Castell de 8 completat! (8 pisos - 5 pisos)
+                </p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mt-2">
+                <button onclick="openConfigModal()" class="py-4 px-6 bg-slate-800 hover:bg-slate-700 text-white font-game text-xl font-bold rounded-2xl border border-slate-600 transition">
+                    Canviar Castell / Nivell
+                </button>
+                <button onclick="startGame()" class="py-4 px-6 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-game text-xl font-extrabold rounded-2xl shadow-lg transition">
+                    Nova Ronda!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== LÒGICA DE L'APLICACIÓ ==================== -->
+    <script>
+        // Estat de la configuració per defecte
+        const config = {
+            ops: ['add'],       // 'add', 'sub', 'mul'
+            digits: 1,          // 1, 21 (2 i 1 xifra), 2, 3
+            goal: 8,            // Pisos del castell (6, 8, 10)
+            autoSubmit: true,   // Comprova automàticament en escriure les xifres correctes
+            sound: true
+        };
+
+        // Estat de la partida
+        const state = {
+            p1: { score: 0, currentAnswer: null, userInput: '', locked: false },
+            p2: { score: 0, currentAnswer: null, userInput: '', locked: false },
+            isPlaying: false
+        };
+
+        // Context d'àudio sintètic (Web Audio API) amb toc de gralles en fer l'aleta
+        let audioCtx = null;
+
+        function playTone(type) {
+            if (!config.sound) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'tap') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(520, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } else if (type === 'correct') {
+                    // So de pujada de pis (timbal + nota ascendent)
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(554.37, now + 0.07);
+                    osc.frequency.setValueAtTime(659.25, now + 0.14);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'wrong') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(160, now);
+                    osc.frequency.linearRampToValueAtTime(110, now + 0.25);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'win') {
+                    // Melodia inspirada en el Toc de Castells (gralles festives)
+                    const grallaNotes = [
+                        { f: 523.25, t: 0.0, d: 0.15 },  // Do
+                        { f: 659.25, t: 0.16, d: 0.15 }, // Mi
+                        { f: 783.99, t: 0.32, d: 0.25 }, // Sol
+                        { f: 659.25, t: 0.60, d: 0.15 }, // Mi
+                        { f: 783.99, t: 0.76, d: 0.15 }, // Sol
+                        { f: 1046.50, t: 0.92, d: 0.55 } // Do agut (Aleta!)
+                    ];
+                    grallaNotes.forEach(n => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.type = 'sawtooth'; // Timbre més brillant tipus gralla
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.frequency.setValueAtTime(n.f, now + n.t);
+                        g.gain.setValueAtTime(0.14, now + n.t);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + n.t + n.d);
+                        o.start(now + n.t);
+                        o.stop(now + n.t + n.d);
+                    });
+                }
+            } catch (e) {
+                console.warn("Àudio no disponible:", e);
+            }
+        }
+
+        function toggleSound() {
+            config.sound = !config.sound;
+            document.getElementById('icon-sound-on').classList.toggle('hidden', !config.sound);
+            document.getElementById('icon-sound-off').classList.toggle('hidden', config.sound);
+        }
+
+        // ==================== PANTALLA COMPLETA ====================
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.warn(`Error activant pantalla completa: ${err.message}`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const isFs = !!document.fullscreenElement;
+            document.getElementById('icon-fs-enter').classList.toggle('hidden', isFs);
+            document.getElementById('icon-fs-exit').classList.toggle('hidden', !isFs);
+            document.getElementById('text-fullscreen').textContent = isFs ? 'Sortir' : 'Pantalla Completa';
+        });
+
+        // ==================== CONTROLS DE CONFIGURACIÓ ====================
+        function toggleOp(op) {
+            const idx = config.ops.indexOf(op);
+            if (idx > -1) {
+                if (config.ops.length === 1) {
+                    document.getElementById('op-warning').classList.remove('hidden');
+                    return;
+                }
+                config.ops.splice(idx, 1);
+            } else {
+                config.ops.push(op);
+            }
+            document.getElementById('op-warning').classList.add('hidden');
+            updateConfigUI();
+        }
+
+        function selectDigits(d) {
+            config.digits = d;
+            updateConfigUI();
+        }
+
+        function selectGoal(g) {
+            config.goal = g;
+            updateConfigUI();
+        }
+
+        function toggleAutoSubmit() {
+            config.autoSubmit = !config.autoSubmit;
+            updateConfigUI();
+        }
+
+        function updateConfigUI() {
+            ['add', 'sub', 'mul'].forEach(op => {
+                const btn = document.getElementById(`cfg-op-${op}`);
+                const active = config.ops.includes(op);
+                if (active) {
+                    btn.className = "op-toggle p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-600/25 text-white font-game text-xl sm:text-2xl font-bold flex flex-col items-center gap-1 transition shadow-lg shadow-indigo-500/10";
+                } else {
+                    btn.className = "op-toggle p-4 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-game text-xl sm:text-2xl font-bold flex flex-col items-center gap-1 transition";
+                }
+            });
+
+            [1, 21, 2, 3].forEach(d => {
+                const btn = document.getElementById(`cfg-dig-${d}`);
+                const active = config.digits === d;
+                if (active) {
+                    btn.className = "dig-btn p-3.5 rounded-2xl border-2 border-emerald-500 bg-emerald-600/25 text-white font-bold text-base sm:text-lg transition shadow-lg shadow-emerald-500/10";
+                } else {
+                    btn.className = "dig-btn p-3.5 rounded-2xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-bold text-base sm:text-lg transition";
+                }
+            });
+
+            [6, 8, 10].forEach(g => {
+                const btn = document.getElementById(`cfg-goal-${g}`);
+                const active = config.goal === g;
+                if (active) {
+                    btn.className = "goal-btn py-3 rounded-xl border-2 border-sky-500 bg-sky-600/25 text-white font-game text-lg font-bold transition";
+                } else {
+                    btn.className = "goal-btn py-3 rounded-xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-game text-lg font-bold transition";
+                }
+            });
+
+            const autoBtn = document.getElementById('cfg-auto-submit');
+            const badge = document.getElementById('auto-submit-badge');
+            if (config.autoSubmit) {
+                autoBtn.className = "w-full py-3 px-4 rounded-xl border-2 border-amber-500 bg-amber-500/20 text-white font-bold text-sm sm:text-base flex items-center justify-between transition";
+                badge.className = "bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-lg text-xs font-extrabold";
+                badge.textContent = "ACTIVAT";
+            } else {
+                autoBtn.className = "w-full py-3 px-4 rounded-xl border-2 border-slate-700 bg-slate-800/50 text-slate-400 font-bold text-sm sm:text-base flex items-center justify-between transition";
+                badge.className = "bg-slate-700 text-slate-300 px-2.5 py-0.5 rounded-lg text-xs font-extrabold";
+                badge.textContent = "MANUAL (OK)";
+            }
+        }
+
+        function openConfigModal() {
+            state.isPlaying = false;
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('victory-modal').classList.remove('flex');
+            document.getElementById('config-modal').classList.remove('hidden');
+            document.getElementById('config-modal').classList.add('flex');
+        }
+
+        // ==================== RENDERITZAT DEL CASTELL HUMÀ ====================
+        function createCastellerSVG(shirtColor, hasHelmet = false, isEnxaneta = false) {
+            // Dibuixa un casteller estilitzat amb camisa del color de la colla, faixa negra i pantalons blancs
+            const helmetSVG = hasHelmet 
+                ? `<path d="M8 9 C8 3, 24 3, 24 9 Z" fill="#1e293b" stroke="#94a3b8" stroke-width="1.2"/>` // Casc de canalla
+                : `<circle cx="16" cy="7" r="4" fill="#fed7aa"/>`; // Cap normal
+
+            const armAnim = isEnxaneta ? `class="animate-aleta"` : ``;
+            const leftArm = isEnxaneta 
+                ? `<path ${armAnim} d="M9 13 L3 3" stroke="${shirtColor}" stroke-width="3.5" stroke-linecap="round"/>` // Braç fent l'aleta!
+                : `<path d="M9 13 L4 18" stroke="${shirtColor}" stroke-width="3" stroke-linecap="round"/>`;
+
+            return `
+                <svg viewBox="0 0 32 32" class="w-6 h-6 sm:w-8 sm:h-8 shrink-0 -mx-0.5 drop-shadow">
+                    <!-- Braços -->
+                    ${leftArm}
+                    <path d="M23 13 L28 18" stroke="${shirtColor}" stroke-width="3" stroke-linecap="round"/>
+                    <!-- Cap / Casc -->
+                    ${helmetSVG}
+                    <!-- Camisa -->
+                    <rect x="9" y="11" width="14" height="10" rx="2.5" fill="${shirtColor}"/>
+                    <!-- Faixa negra tradicional -->
+                    <rect x="9" y="19" width="14" height="3.5" fill="#0f172a"/>
+                    <!-- Pantalons blancs -->
+                    <rect x="10" y="22.5" width="5" height="7" rx="1" fill="#f8fafc"/>
+                    <rect x="17" y="22.5" width="5" height="7" rx="1" fill="#f8fafc"/>
+                </svg>
+            `;
+        }
+
+        function renderCastle(playerNum) {
+            const score = state[`p${playerNum}`].score;
+            const goal = config.goal;
+            const container = document.getElementById(`tower-p${playerNum}`);
+            const statusLabel = document.getElementById(`status-castell-${playerNum}`);
+            
+            const shirtColor = playerNum === 1 ? '#0ea5e9' : '#f43f5e'; // Blau cel vs Vermell intens
+            container.innerHTML = '';
+
+            if (score === 0) {
+                statusLabel.textContent = "Preparant pinya...";
+                // Base buida / marca a terra
+                container.innerHTML = `<div class="w-24 h-2 bg-slate-700/60 rounded-full"></div>`;
+                return;
+            }
+
+            // Construïm pis per pis des de baix (flex-col-reverse fa que el primer element vagi a baix de tot)
+            for (let level = 1; level <= score; level++) {
+                const row = document.createElement('div');
+                const isLastAdded = (level === score);
+                row.className = `flex items-center justify-center -mb-1.5 ${isLastAdded ? 'animate-build' : ''}`;
+
+                if (level === 1) {
+                    // PIS 1: LA PINYA (5 castellers junts formant la base ampla)
+                    row.innerHTML = `
+                        <div class="flex items-center justify-center bg-slate-950/40 px-2 pt-1 rounded-t-xl border-b-2 border-slate-600">
+                            ${createCastellerSVG(shirtColor)}
+                            ${createCastellerSVG(shirtColor)}
+                            ${createCastellerSVG(shirtColor)}
+                            ${createCastellerSVG(shirtColor)}
+                            ${createCastellerSVG(shirtColor)}
+                        </div>
+                    `;
+                } else if (level === goal) {
+                    // DARRER PIS: L'ENXANETA CORONANT I FENT L'ALETA!
+                    row.className = `flex flex-col items-center justify-center -mb-1 z-20 ${isLastAdded ? 'animate-build' : ''}`;
+                    row.innerHTML = `
+                        <span class="text-[10px] font-game font-extrabold bg-amber-400 text-slate-950 px-1.5 rounded-full mb-0.5 shadow">ALETA! 🙌</span>
+                        ${createCastellerSVG(shirtColor, true, true)}
+                    `;
+                } else if (level === goal - 1) {
+                    // PENÚLTIM PIS: L'ACOTXADOR (amb casc)
+                    row.innerHTML = createCastellerSVG(shirtColor, true, false);
+                } else if (level === goal - 2) {
+                    // AVANTPENÚLTIM PIS: ELS DOSOS (2 castellers amb casc)
+                    row.innerHTML = `
+                        ${createCastellerSVG(shirtColor, true, false)}
+                        ${createCastellerSVG(shirtColor, true, false)}
+                    `;
+                } else {
+                    // PISO INTERMEDIS DEL TRONC (3 castellers = un "Tres")
+                    row.innerHTML = `
+                        ${createCastellerSVG(shirtColor)}
+                        ${createCastellerSVG(shirtColor)}
+                        ${createCastellerSVG(shirtColor)}
+                    `;
+                }
+
+                container.appendChild(row);
+            }
+
+            // Actualitzar text descriptiu de l'estructura del castell
+            if (score === 1) statusLabel.textContent = "Pinya tancada!";
+            else if (score < goal - 2) statusLabel.textContent = `Tronc (${score} pisos)`;
+            else if (score === goal - 2) statusLabel.textContent = "Pugen els Dosos!";
+            else if (score === goal - 1) statusLabel.textContent = "Col·locat l'Acotxador!";
+            else if (score >= goal) statusLabel.textContent = "🏆 ALETA FET!";
+        }
+
+        // ==================== GENERADOR D'OPERACIONS ====================
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function generateOperand(digits, isSecondOperand = false) {
+            if (digits === 1) return getRandomInt(1, 9);
+            if (digits === 21) return isSecondOperand ? getRandomInt(2, 9) : getRandomInt(10, 89);
+            if (digits === 2) return getRandomInt(10, 99);
+            if (digits === 3) return getRandomInt(100, 500);
+            return getRandomInt(1, 9);
+        }
+
+        function generateProblem(playerNum) {
+            const opType = config.ops[Math.floor(Math.random() * config.ops.length)];
+            let a, b, symbol, answer;
+
+            if (opType === 'add') {
+                a = generateOperand(config.digits, false);
+                b = generateOperand(config.digits, true);
+                symbol = '+';
+                answer = a + b;
+            } else if (opType === 'sub') {
+                a = generateOperand(config.digits, false);
+                b = generateOperand(config.digits, true);
+                if (b > a) [a, b] = [b, a];
+                symbol = '−';
+                answer = a - b;
+            } else if (opType === 'mul') {
+                if (config.digits === 1) {
+                    a = getRandomInt(2, 9);
+                    b = getRandomInt(2, 9);
+                } else if (config.digits === 21) {
+                    a = getRandomInt(11, 25);
+                    b = getRandomInt(2, 9);
+                } else if (config.digits === 2) {
+                    a = getRandomInt(11, 20);
+                    b = getRandomInt(11, 15);
+                } else {
+                    a = getRandomInt(100, 250);
+                    b = getRandomInt(2, 5);
+                }
+                symbol = '×';
+                answer = a * b;
+            }
+
+            const pKey = `p${playerNum}`;
+            state[pKey].currentAnswer = answer;
+            state[pKey].userInput = '';
+            state[pKey].locked = false;
+
+            document.getElementById(`op-p${playerNum}`).textContent = `${a} ${symbol} ${b}`;
+            document.getElementById(`input-p${playerNum}`).textContent = '';
+        }
+
+        // ==================== INICI I MECÀNICA DEL JOC ====================
+        function startGame() {
+            state.p1.score = 0;
+            state.p2.score = 0;
+            state.isPlaying = true;
+
+            document.getElementById('score-p1').textContent = '0';
+            document.getElementById('score-p2').textContent = '0';
+            document.getElementById('goal-label-p1').textContent = `/${config.goal}`;
+            document.getElementById('goal-label-p2').textContent = `/${config.goal}`;
+            
+            renderCastle(1);
+            renderCastle(2);
+            updateHeaderBadges();
+
+            document.getElementById('config-modal').classList.add('hidden');
+            document.getElementById('config-modal').classList.remove('flex');
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('victory-modal').classList.remove('flex');
+
+            generateProblem(1);
+            generateProblem(2);
+        }
+
+        function updateHeaderBadges() {
+            const opNames = { add: 'Sumes', sub: 'Restes', mul: 'Multiplicacions' };
+            document.getElementById('badge-ops').textContent = config.ops.map(o => opNames[o]).join(' + ');
+            
+            const digNames = { 1: '1 xifra', 21: '2 i 1 xifra', 2: '2 xifres', 3: '3 xifres' };
+            document.getElementById('badge-digits').textContent = digNames[config.digits];
+            document.getElementById('badge-goal').textContent = `Castell de ${config.goal} pisos`;
+        }
+
+        function pressKey(playerNum, digit) {
+            if (!state.isPlaying) return;
+            const p = state[`p${playerNum}`];
+            if (p.locked) return;
+
+            if (p.userInput.length >= 5) return;
+
+            playTone('tap');
+            p.userInput += digit;
+            document.getElementById(`input-p${playerNum}`).textContent = p.userInput;
+
+            if (config.autoSubmit) {
+                const targetStr = String(p.currentAnswer);
+                if (p.userInput === targetStr) {
+                    handleCorrect(playerNum);
+                } else if (p.userInput.length >= targetStr.length) {
+                    handleWrong(playerNum);
+                }
+            }
+        }
+
+        function clearInput(playerNum) {
+            if (!state.isPlaying) return;
+            const p = state[`p${playerNum}`];
+            if (p.locked) return;
+
+            playTone('tap');
+            p.userInput = '';
+            document.getElementById(`input-p${playerNum}`).textContent = '';
+        }
+
+        function submitAnswer(playerNum) {
+            if (!state.isPlaying) return;
+            const p = state[`p${playerNum}`];
+            if (p.locked || p.userInput === '') return;
+
+            if (parseInt(p.userInput, 10) === p.currentAnswer) {
+                handleCorrect(playerNum);
+            } else {
+                handleWrong(playerNum);
+            }
+        }
+
+        function handleCorrect(playerNum) {
+            const p = state[`p${playerNum}`];
+            p.locked = true;
+            p.score += 1;
+
+            playTone('correct');
+            document.getElementById(`score-p${playerNum}`).textContent = p.score;
+            
+            // Fem créixer el castell del jugador!
+            renderCastle(playerNum);
+
+            const card = document.getElementById(`card-p${playerNum}`);
+            const feedback = document.getElementById(`feedback-p${playerNum}`);
+            
+            card.classList.add('animate-pop');
+            const msg = p.score >= config.goal ? '🙌 ALETA!' : '⬆️ AMUNT!';
+            feedback.innerHTML = `<div class="bg-emerald-500/95 text-slate-950 font-game text-3xl sm:text-4xl font-extrabold px-5 py-2 rounded-2xl shadow-lg">${msg}</div>`;
+            feedback.style.opacity = '1';
+
+            // Comprovar si s'ha coronat el castell
+            if (p.score >= config.goal) {
+                setTimeout(() => {
+                    endGame(playerNum);
+                }, 650);
+                return;
+            }
+
+            setTimeout(() => {
+                card.classList.remove('animate-pop');
+                feedback.style.opacity = '0';
+                if (state.isPlaying) {
+                    generateProblem(playerNum);
+                }
+            }, 450);
+        }
+
+        function handleWrong(playerNum) {
+            const p = state[`p${playerNum}`];
+            p.locked = true;
+
+            playTone('wrong');
+            const card = document.getElementById(`card-p${playerNum}`);
+            const feedback = document.getElementById(`feedback-p${playerNum}`);
+
+            card.classList.add('animate-shake');
+            feedback.innerHTML = `<div class="bg-rose-600/95 text-white font-game text-2xl sm:text-3xl font-extrabold px-5 py-2 rounded-2xl shadow-lg">✗ AGUANTA!</div>`;
+            feedback.style.opacity = '1';
+
+            setTimeout(() => {
+                card.classList.remove('animate-shake');
+                feedback.style.opacity = '0';
+                p.userInput = '';
+                document.getElementById(`input-p${playerNum}`).textContent = '';
+                p.locked = false;
+            }, 500);
+        }
+
+        function endGame(winnerNum) {
+            state.isPlaying = false;
+            playTone('win');
+
+            const title = document.getElementById('winner-title');
+            const subtitle = document.getElementById('winner-subtitle');
+
+            if (winnerNum === 1) {
+                title.textContent = "ALETA DE LA COLLA BLAVA!";
+                title.className = "font-game text-3xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-blue-500 mb-2";
+            } else {
+                title.textContent = "ALETA DE LA COLLA VERMELLA!";
+                title.className = "font-game text-3xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-rose-500 mb-2";
+            }
+
+            subtitle.textContent = `Castell de ${config.goal} pisos completat! (Blava: ${state.p1.score} - Vermella: ${state.p2.score})`;
+
+            const modal = document.getElementById('victory-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        // Inicialitzar UI al carregar
+        window.onload = () => {
+            updateConfigUI();
+        };
+    </script>
+</body>
+</html>
