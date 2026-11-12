@@ -26,7 +26,7 @@ Pots fer servir l'aplicació de dues maneres molt senzilles:
 
 ### Opció 1: En línia a través de GitHub Pages (Recomanat)
 1. Accedeix directament a l'enllaç de GitHub Pages del projecte:
-   `https://bmarquil.github.io/NOM-DEL-REPOSITORI/` *(recorda substituir `NOM-DEL-REPOSITORI` pel nom que li posis al teu repo)*
+   (https://bmarquil.github.io/CalculMentalCasteller/)
 2. Prem el botó **"Pantalla Completa"** a la cantonada superior dreta de la pantalla digital de l'aula.
 
 ### Opció 2: En local (sense connexió a internet o des de l'ordinador de l'aula)
