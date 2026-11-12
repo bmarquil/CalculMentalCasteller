@@ -25,9 +25,7 @@ Dos alumnes s'enfronten en una batalla de càlcul mental simultània (1vs1). Cad
 Pots fer servir l'aplicació de dues maneres molt senzilles:
 
 ### Opció 1: En línia a través de GitHub Pages (Recomanat)
-1. Accedeix directament a l'enllaç de GitHub Pages del projecte:
-   (https://bmarquil.github.io/CalculMentalCasteller/)
-2. Prem el botó **"Pantalla Completa"** a la cantonada superior dreta de la pantalla digital de l'aula.
+https://bmarquil.github.io/CalculMentalCasteller/
 
 ### Opció 2: En local (sense connexió a internet o des de l'ordinador de l'aula)
 1. Descarrega el fitxer `batalla_calcul_mental.html` (o clona aquest repositori).
